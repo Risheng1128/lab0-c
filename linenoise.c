@@ -171,7 +171,6 @@ enum KEY_ACTION {
     BACKSPACE = 127 /* Backspace */
 };
 
-static void linenoiseAtExit(void);
 int linenoiseHistoryAdd(const char *line);
 static void refreshLine(struct linenoiseState *l);
 
@@ -1199,7 +1198,7 @@ static void freeHistory(void)
 }
 
 /* At exit we'll try to fix the terminal to the initial conditions. */
-static void linenoiseAtExit(void)
+void linenoiseAtExit(void)
 {
     disableRawMode(STDIN_FILENO);
     freeHistory();
