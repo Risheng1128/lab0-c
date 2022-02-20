@@ -275,7 +275,7 @@ void q_reverse(struct list_head *head)
     if (!head)
         return;
 
-    struct list_head *prev = head->prev, *curr = head, *next = head->next;
+    struct list_head *prev = head->prev, *curr = head, *next = NULL;
 
     while (next != head) {
         next = curr->next;
