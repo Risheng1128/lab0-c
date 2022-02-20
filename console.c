@@ -1,6 +1,7 @@
 /* Implementation of simple command-line interface */
 
 #include "console.h"
+#include "linenoise.h"
 
 #include <ctype.h>
 #include <fcntl.h>
@@ -591,6 +592,7 @@ bool finish_cmd()
     bool ok = true;
     if (!quit_flag)
         ok = ok && do_quit(0, NULL);
+    linenoiseAtExit();
     has_infile = false;
     return ok && err_cnt == 0;
 }
