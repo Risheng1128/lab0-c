@@ -294,16 +294,13 @@ static struct list_head *mergelist(struct list_head *list1,
 {
     struct list_head *res = NULL;
     struct list_head **indirect = &res;
-    while (list1 && list2) {
+    for (struct list_head **node = NULL; list1 && list2;
+         *node = (*node)->next) {
         element_t *list1_entry = list_entry(list1, element_t, list);
         element_t *list2_entry = list_entry(list2, element_t, list);
-        if (strcmp(list1_entry->value, list2_entry->value) < 0) {
-            *indirect = list1;
-            list1 = list1->next;
-        } else {
-            *indirect = list2;
-            list2 = list2->next;
-        }
+        node = strcmp(list1_entry->value, list2_entry->value) < 0 ? &list1
+                                                                  : &list2;
+        *indirect = *node;
         indirect = &(*indirect)->next;
     }
     *indirect = (struct list_head *) ((u_int64_t) list1 | (u_int64_t) list2);
@@ -346,6 +343,7 @@ void q_sort(struct list_head *head)
     head->next = mergesort(head->next);
 
     struct list_head *curr = head, *next = head->next;
+
     while (next) {
         next->prev = curr;
         curr = next;
