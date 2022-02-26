@@ -1,9 +1,9 @@
+#include "queue.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include "harness.h"
-#include "queue.h"
+#include "list_sort.h"
 
 /* Notice: sometimes, Cppcheck would find the potential NULL pointer bugs,
  * but some of them cannot occur. You can suppress them by adding the
@@ -286,6 +286,7 @@ void q_reverse(struct list_head *head)
     }
 }
 
+#if (USE_LINUX_SORT == 0)
 /*
  * Merge the two lists in a one sorted list.
  */
@@ -352,3 +353,4 @@ void q_sort(struct list_head *head)
     curr->next = head;
     head->prev = curr;
 }
+#endif
