@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include "dudect/fixture.h"
 #include "list.h"
+#include "list_sort.h"
 
 /* Our program needs to use regular malloc/free */
 #define INTERNAL 1
@@ -597,6 +598,15 @@ static bool do_size(int argc, char *argv[])
     return ok && !error_check();
 }
 
+__attribute__((nonnull(2, 3))) int cmp(void *priv,
+                                       const struct list_head *list1,
+                                       const struct list_head *list2)
+{
+    element_t *list1_entry = list_entry(list1, element_t, list);
+    element_t *list2_entry = list_entry(list2, element_t, list);
+    return strcmp(list1_entry->value, list2_entry->value) < 0 ? 0 : 1;
+}
+
 bool do_sort(int argc, char *argv[])
 {
     if (argc != 1) {
@@ -614,8 +624,14 @@ bool do_sort(int argc, char *argv[])
     error_check();
 
     set_noallocate_mode(true);
-    if (exception_setup(true))
+
+    if (exception_setup(true)) {
+#if (USE_LINUX_SORT == 1)
+        list_sort(NULL, l_meta.l, cmp);
+#else
         q_sort(l_meta.l);
+#endif
+    }
     exception_cancel();
     set_noallocate_mode(false);
 
