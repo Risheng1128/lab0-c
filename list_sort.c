@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 #include "list_sort.h"
 
-#if (USE_LINUX_SORT == 1)
 /*
  * Returns a list organized in an intermediate format suited
  * to chaining of merge() calls: null-terminated, no reserved or
@@ -179,6 +178,7 @@ __attribute__((nonnull(2, 3, 4, 5))) static void merge_final(
  * 2^(k+1) - 1 (second merge of case 5 when x == 2^(k-1) - 1).
  */
 
+#if (USE_LINUX_SORT == 1)
 void list_sort(void *priv, struct list_head *head, list_cmp_func_t cmp)
 {
     if (!head)
