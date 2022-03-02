@@ -885,40 +885,41 @@ static int linenoiseEdit(int stdin_fd,
         signed char c;
         int nread;
         char seq[3];
-
-        fd_set set;
-        FD_ZERO(&set);
-        FD_SET(listenfd, &set);
-        FD_SET(stdin_fd, &set);
-        clientlen = sizeof(clientaddr);
-        int rv = select(listenfd + 1, &set, NULL, NULL, NULL);
-        int connfd;
-        switch (rv) {
-        case -1:
-            perror("select"); /* an error occurred */
-            continue;
-        case 0:
-            printf("timeout occurred\n"); /* a timeout occurred */
-            continue;
-        default:
-            if (FD_ISSET(listenfd, &set)) {
-                connfd = accept(listenfd, (SA *) &clientaddr, &clientlen);
-                char *p = url_process(connfd, &clientaddr);
-                strncpy(buf, p, strlen(p) + 1);
-                close(connfd);
-                free(p);
-                return strlen(p);
-            } else if (FD_ISSET(stdin_fd, &set)) {
-                nread = read(l.ifd, &c, 1);
-                if (nread <= 0)
-                    return l.len;
+        if (listenfd) {
+            fd_set set;
+            FD_ZERO(&set);
+            FD_SET(listenfd, &set);
+            FD_SET(stdin_fd, &set);
+            clientlen = sizeof(clientaddr);
+            int rv = select(listenfd + 1, &set, NULL, NULL, NULL);
+            int connfd;
+            switch (rv) {
+            case -1:
+                perror("select"); /* an error occurred */
+                continue;
+            case 0:
+                printf("timeout occurred\n"); /* a timeout occurred */
+                continue;
+            default:
+                if (FD_ISSET(listenfd, &set)) {
+                    connfd = accept(listenfd, (SA *) &clientaddr, &clientlen);
+                    char *p = url_process(connfd, &clientaddr);
+                    strncpy(buf, p, strlen(p) + 1);
+                    close(connfd);
+                    free(p);
+                    return strlen(p);
+                } else if (FD_ISSET(stdin_fd, &set)) {
+                    nread = read(l.ifd, &c, 1);
+                    if (nread <= 0)
+                        return l.len;
+                }
+                break;
             }
-            break;
+        } else {
+            nread = read(l.ifd, &c, 1);
+            if (nread <= 0)
+                return l.len;
         }
-
-        nread = read(l.ifd, &c, 1);
-        if (nread <= 0)
-            return l.len;
 
         /* Only autocomplete when the callback is set. It returns < 0 when
          * there was an error reading from fd. Otherwise it will return the
@@ -1184,7 +1185,6 @@ char *linenoise(const char *prompt)
         return linenoiseNoTTY();
     } else if (isUnsupportedTerm()) {
         size_t len;
-
         printf("%s", prompt);
         fflush(stdout);
         if (fgets(buf, LINENOISE_MAX_LINE, stdin) == NULL)
@@ -1220,7 +1220,6 @@ static void freeHistory(void)
 {
     if (history) {
         int j;
-
         for (j = 0; j < history_len; j++)
             free(history[j]);
         free(history);
@@ -1345,7 +1344,6 @@ int linenoiseHistoryLoad(const char *filename)
 
     while (fgets(buf, LINENOISE_MAX_LINE, fp) != NULL) {
         char *p;
-
         p = strchr(buf, '\r');
         if (!p)
             p = strchr(buf, '\n');
@@ -1364,34 +1362,11 @@ char *url_process(int fd, struct sockaddr_in *clientaddr)
 #endif
     http_request req;
     parse_request(fd, &req);
-    int status = 200;
 
-    struct stat sbuf;
-    int ffd = open(req.filename, O_RDONLY, 0);
-    if (ffd <= 0) {
-        status = 404;
-        char *msg = "File not found";
-        client_error(fd, status, "Not found", msg);
-    } else {
-        fstat(ffd, &sbuf);
-        if (S_ISREG(sbuf.st_mode)) {
-            if (req.end == 0) {
-                req.end = sbuf.st_size;
-            }
-            if (req.offset > 0) {
-                status = 206;
-            }
-            serve_static(fd, ffd, &req, sbuf.st_size);
-        } else if (S_ISDIR(sbuf.st_mode)) {
-            status = 200;
-            handle_directory_request(fd, ffd, req.filename);
-        } else {
-            status = 400;
-            char *msg = "Unknow Error";
-            client_error(fd, status, "Error", msg);
-        }
-        close(ffd);
-    }
+    int status = 200;
+    char buf[MAXLINE];
+    snprintf(buf, MAXLINE, "HTTP/1.1 %d\r\n", status);
+    writen(fd, buf, strlen(buf));
 
     char *p = req.filename;
     /* Change '/' to ' ' */
