@@ -187,11 +187,12 @@ static bool interpret_cmda(int argc, char *argv[])
         if (!ok)
             record_error();
     } else {
+        if (argv[0][0] == '.')
+            return true;
         report(1, "Unknown command '%s'", argv[0]);
         record_error();
         ok = false;
     }
-
     return ok;
 }
 
@@ -400,14 +401,12 @@ static bool do_time(int argc, char *argv[])
 
 static bool do_web(int argc, char *argv[])
 {
-    listenfd = open_listenfd(DEFAULT_PORT);
-    if (listenfd > 0) {
+    if (!listenfd) {
+        listenfd = open_listenfd(DEFAULT_PORT);
+        noise = false;
         printf("listen on port %d, fd is %d\n", DEFAULT_PORT, listenfd);
-    } else {
-        perror("ERROR");
-        exit(listenfd);
-    }
-    noise = false;
+    } else
+        printf("Server has been launched\n");
     return true;
 }
 
@@ -486,7 +485,6 @@ static char *readline()
     int cnt;
     char c;
     char *lptr = linebuf;
-
     if (!buf_stack)
         return NULL;
 
@@ -526,11 +524,6 @@ static char *readline()
         *lptr++ = '\n';
     }
     *lptr++ = '\0';
-
-    if (echo) {
-        report_noreturn(1, prompt);
-        report_noreturn(1, linebuf);
-    }
 
     return linebuf;
 }
@@ -588,6 +581,7 @@ int cmd_select(int nfds,
         if (listenfd >= nfds)
             nfds = listenfd + 1;
     }
+
     if (nfds == 0)
         return 0;
 
@@ -602,13 +596,14 @@ int cmd_select(int nfds,
         result--;
         char *cmdline;
         cmdline = readline();
+
         if (cmdline)
             interpret_cmd(cmdline);
+
     } else if (readfds && FD_ISSET(listenfd, readfds)) {
         FD_CLR(listenfd, readfds);
         result--;
         int connfd = accept(listenfd, (SA *) &clientaddr, &clientlen);
-
         char *p = url_process(connfd, &clientaddr);
         if (p)
             interpret_cmd(p);
@@ -679,19 +674,10 @@ bool run_console(char *infile_name)
     if (!has_infile) {
         char *cmdline;
         while (noise && (cmdline = linenoise(prompt)) != NULL) {
-            int connfd = accept(listenfd, (SA *) &clientaddr, &clientlen);
-            if (connfd == -1) {
-                interpret_cmd(cmdline);
-                linenoiseHistoryAdd(cmdline); /* Add to the history. */
-                linenoiseHistorySave(
-                    HISTORY_FILE); /* Save the history on disk. */
-                linenoiseFree(cmdline);
-            } else {
-                cmdline = url_process(connfd, &clientaddr);
-                interpret_cmd(cmdline);
-                free(cmdline);
-                close(connfd);
-            }
+            interpret_cmd(cmdline);
+            linenoiseHistoryAdd(cmdline);       /* Add to the history. */
+            linenoiseHistorySave(HISTORY_FILE); /* Save the history on disk. */
+            linenoiseFree(cmdline);
         }
         if (!noise) {
             while (!cmd_done())
