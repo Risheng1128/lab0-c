@@ -38,7 +38,7 @@ static double last_time;
  */
 
 #define RIO_BUFSIZE 8192
-typedef struct RIO_ELE rio_t, *rio_ptr;
+typedef struct RIO_ELE *rio_ptr;
 
 struct RIO_ELE {
     int fd;                /* File descriptor */
@@ -398,6 +398,19 @@ static bool do_time(int argc, char *argv[])
     return ok;
 }
 
+static bool do_web(int argc, char *argv[])
+{
+    listenfd = open_listenfd(DEFAULT_PORT);
+    if (listenfd > 0) {
+        printf("listen on port %d, fd is %d\n", DEFAULT_PORT, listenfd);
+    } else {
+        perror("ERROR");
+        exit(listenfd);
+    }
+    noise = false;
+    return true;
+}
+
 /* Initialize interpreter */
 void init_cmd()
 {
@@ -412,6 +425,7 @@ void init_cmd()
     ADD_COMMAND(source, " file           | Read commands from source file");
     ADD_COMMAND(log, " file           | Copy output to file");
     ADD_COMMAND(time, " cmd arg ...    | Time command execution");
+    ADD_COMMAND(web, "                | Use web server");
     add_cmd("#", do_comment_cmd, " ...            | Display comment");
     add_param("simulation", &simulation, "Start/Stop simulation mode", NULL);
     add_param("verbose", &verblevel, "Verbosity level", NULL);
@@ -555,7 +569,14 @@ int cmd_select(int nfds,
 
         /* Add input fd to readset for select */
         infd = buf_stack->fd;
+        FD_ZERO(readfds);
         FD_SET(infd, readfds);
+
+        /* If web not ready listen */
+        if (listenfd != -1)
+            FD_SET(listenfd, readfds);
+
+
         if (infd == STDIN_FILENO && prompt_flag) {
             printf("%s", prompt);
             fflush(stdout);
@@ -564,6 +585,8 @@ int cmd_select(int nfds,
 
         if (infd >= nfds)
             nfds = infd + 1;
+        if (listenfd >= nfds)
+            nfds = listenfd + 1;
     }
     if (nfds == 0)
         return 0;
@@ -577,12 +600,20 @@ int cmd_select(int nfds,
         /* Commandline input available */
         FD_CLR(infd, readfds);
         result--;
-        if (has_infile) {
-            char *cmdline;
-            cmdline = readline();
-            if (cmdline)
-                interpret_cmd(cmdline);
-        }
+        char *cmdline;
+        cmdline = readline();
+        if (cmdline)
+            interpret_cmd(cmdline);
+    } else if (readfds && FD_ISSET(listenfd, readfds)) {
+        FD_CLR(listenfd, readfds);
+        result--;
+        int connfd = accept(listenfd, (SA *) &clientaddr, &clientlen);
+
+        char *p = url_process(connfd, &clientaddr);
+        if (p)
+            interpret_cmd(p);
+        free(p);
+        close(connfd);
     }
     return result;
 }
@@ -647,11 +678,24 @@ bool run_console(char *infile_name)
 
     if (!has_infile) {
         char *cmdline;
-        while ((cmdline = linenoise(prompt)) != NULL) {
-            interpret_cmd(cmdline);
-            linenoiseHistoryAdd(cmdline);       /* Add to the history. */
-            linenoiseHistorySave(HISTORY_FILE); /* Save the history on disk. */
-            linenoiseFree(cmdline);
+        while (noise && (cmdline = linenoise(prompt)) != NULL) {
+            int connfd = accept(listenfd, (SA *) &clientaddr, &clientlen);
+            if (connfd == -1) {
+                interpret_cmd(cmdline);
+                linenoiseHistoryAdd(cmdline); /* Add to the history. */
+                linenoiseHistorySave(
+                    HISTORY_FILE); /* Save the history on disk. */
+                linenoiseFree(cmdline);
+            } else {
+                cmdline = url_process(connfd, &clientaddr);
+                interpret_cmd(cmdline);
+                free(cmdline);
+                close(connfd);
+            }
+        }
+        if (!noise) {
+            while (!cmd_done())
+                cmd_select(0, NULL, NULL, NULL, NULL);
         }
     } else {
         while (!cmd_done())
