@@ -858,6 +858,9 @@ static void console_init()
               NULL);
     add_param("fail", &fail_limit,
               "Number of times allow queue operations to return false", NULL);
+
+    int flags = fcntl(listenfd, F_GETFL);
+    fcntl(listenfd, F_SETFL, flags | O_NONBLOCK);
 }
 
 /* Signal handlers */
@@ -1018,6 +1021,5 @@ int main(int argc, char *argv[])
     bool ok = true;
     ok = ok && run_console(infile_name);
     ok = ok && finish_cmd();
-
     return ok ? 0 : 1;
 }

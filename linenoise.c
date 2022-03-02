@@ -886,6 +886,36 @@ static int linenoiseEdit(int stdin_fd,
         int nread;
         char seq[3];
 
+        fd_set set;
+        FD_ZERO(&set);
+        FD_SET(listenfd, &set);
+        FD_SET(stdin_fd, &set);
+        clientlen = sizeof(clientaddr);
+        int rv = select(listenfd + 1, &set, NULL, NULL, NULL);
+        int connfd;
+        switch (rv) {
+        case -1:
+            perror("select"); /* an error occurred */
+            continue;
+        case 0:
+            printf("timeout occurred\n"); /* a timeout occurred */
+            continue;
+        default:
+            if (FD_ISSET(listenfd, &set)) {
+                connfd = accept(listenfd, (SA *) &clientaddr, &clientlen);
+                char *p = url_process(connfd, &clientaddr);
+                strncpy(buf, p, strlen(p) + 1);
+                close(connfd);
+                free(p);
+                return strlen(p);
+            } else if (FD_ISSET(stdin_fd, &set)) {
+                nread = read(l.ifd, &c, 1);
+                if (nread <= 0)
+                    return l.len;
+            }
+            break;
+        }
+
         nread = read(l.ifd, &c, 1);
         if (nread <= 0)
             return l.len;
@@ -1325,4 +1355,56 @@ int linenoiseHistoryLoad(const char *filename)
     }
     fclose(fp);
     return 0;
+}
+
+char *url_process(int fd, struct sockaddr_in *clientaddr)
+{
+#ifdef LOG_ACCESS
+    printf("accept request, fd is %d, pid is %d\n", fd, getpid());
+#endif
+    http_request req;
+    parse_request(fd, &req);
+    int status = 200;
+
+    struct stat sbuf;
+    int ffd = open(req.filename, O_RDONLY, 0);
+    if (ffd <= 0) {
+        status = 404;
+        char *msg = "File not found";
+        client_error(fd, status, "Not found", msg);
+    } else {
+        fstat(ffd, &sbuf);
+        if (S_ISREG(sbuf.st_mode)) {
+            if (req.end == 0) {
+                req.end = sbuf.st_size;
+            }
+            if (req.offset > 0) {
+                status = 206;
+            }
+            serve_static(fd, ffd, &req, sbuf.st_size);
+        } else if (S_ISDIR(sbuf.st_mode)) {
+            status = 200;
+            handle_directory_request(fd, ffd, req.filename);
+        } else {
+            status = 400;
+            char *msg = "Unknow Error";
+            client_error(fd, status, "Error", msg);
+        }
+        close(ffd);
+    }
+
+    char *p = req.filename;
+    /* Change '/' to ' ' */
+    while (*p) {
+        ++p;
+        if (*p == '/') {
+            *p = ' ';
+        }
+    }
+#ifdef LOG_ACCESS
+    log_access(status, clientaddr, &req);
+#endif
+    char *ret = malloc(strlen(req.filename) + 1);
+    strncpy(ret, req.filename, strlen(req.filename) + 1);
+    return ret;
 }

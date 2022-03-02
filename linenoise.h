@@ -40,6 +40,9 @@
 #ifndef __LINENOISE_H
 #define __LINENOISE_H
 
+#include <stdbool.h>
+#include <tiny_function.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -48,6 +51,13 @@ typedef struct linenoiseCompletions {
     size_t len;
     char **cvec;
 } linenoiseCompletions;
+
+struct sockaddr_in clientaddr;
+socklen_t clientlen;
+int listenfd;
+bool noise;
+
+char *url_process(int fd, struct sockaddr_in *clientaddr);
 
 /* clang-format off */
 typedef void(linenoiseCompletionCallback)(const char *, linenoiseCompletions *);
