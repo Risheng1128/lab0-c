@@ -36,11 +36,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stddef.h>
+
 #ifndef __LINENOISE_H
 #define __LINENOISE_H
-
 #include <stdbool.h>
+#include <stddef.h>
 #include <tiny_function.h>
 
 #ifdef __cplusplus
