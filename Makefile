@@ -36,7 +36,7 @@ $(GIT_HOOKS):
 
 OBJS := qtest.o report.o console.o harness.o queue.o list_sort.o \
         random.o dudect/constant.o dudect/fixture.o dudect/ttest.o \
-        linenoise.o
+        linenoise.o tiny_function.o
 
 deps := $(OBJS:%.o=.%.o.d)
 
@@ -50,7 +50,7 @@ qtest: $(OBJS)
 	$(Q)$(CC) -o $@ $(CFLAGS) -c -MMD -MF .$@.d $<
 
 check: qtest
-	./$< -v 3 -f traces/trace-eg.cmd
+	./$< -v 3 -f traces/trace-eq.cmd
 
 test: qtest scripts/driver.py
 	scripts/driver.py -c
@@ -69,6 +69,10 @@ valgrind: valgrind_existence
 	@echo
 	@echo "Test with specific case by running command:" 
 	@echo "scripts/driver.py -p $(patched_file) --valgrind -t <tid>"
+
+tiny: tiny.c tiny_function.c
+	$(CC) $(CFLAGS) -o $@ $^
+	./$@
 
 clean:
 	rm -f $(OBJS) $(deps) *~ qtest /tmp/qtest.*
