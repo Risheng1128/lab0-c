@@ -31,12 +31,10 @@ void q_free(struct list_head *l)
     if (!l)
         return;
 
-    struct list_head *node = l->next;
-
-    while (node != l) {
-        struct list_head *del = node;
-        node = node->next;
-        q_release_element(list_entry(del, element_t, list));
+    element_t *node, *next;
+    list_for_each_entry_safe (node, next, l, list) {
+        list_del(&node->list);
+        q_release_element(node);
     }
     free(l);
 }
