@@ -167,32 +167,22 @@ bool q_delete_dup(struct list_head *head)
         return false;
 
     bool flag = false;
-    struct list_head *curr = head->next;
+    element_t *curr_entry, *next_entry;
 
-    while (curr != head) {
-        struct list_head *next = curr->next;
-        element_t *curr_entry = list_entry(curr, element_t, list);
-
-        while (next != head) {
-            element_t *next_entry = list_entry(next, element_t, list);
-
-            // strings are same
-            if (!strcmp(curr_entry->value, next_entry->value)) {
-                list_del(next);
-                q_release_element(next_entry);
-                flag = true;
-            } else  // strings are not same
-                break;
-            next = curr->next;
+    list_for_each_entry_safe (curr_entry, next_entry, head, list) {
+        while (&next_entry->list != head &&
+               !strcmp(curr_entry->value, next_entry->value)) {
+            list_del(&next_entry->list);
+            q_release_element(next_entry);
+            // update next pointer
+            next_entry = list_entry(curr_entry->list.next, element_t, list);
+            flag = true;
         }
 
-        curr = curr->next;
-
-        // need to delete current node
+        // need remove current node
         if (flag) {
-            element_t *del = curr_entry;
-            list_del(&del->list);
-            q_release_element(del);
+            list_del(&curr_entry->list);
+            q_release_element(curr_entry);
             flag = false;
         }
     }
