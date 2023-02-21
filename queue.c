@@ -49,16 +49,16 @@ bool q_insert_head(struct list_head *head, char *s)
     if (!element)
         return false;
 
-    unsigned int size = strlen(s) + 1;
-    element->value = malloc(size * sizeof(char));
-    memset(element->value, 0, size);
+    unsigned int len = strlen(s);
+    element->value = malloc((len + 1) * sizeof(char));
     if (!element->value) {
         free(element);
         return false;
     }
 
     // copy string into element
-    strncpy(element->value, s, size);
+    strncpy(element->value, s, len);
+    element->value[len] = 0;
     // initialize the node
     INIT_LIST_HEAD(&element->list);
     // add node into doubly-linked list at head
