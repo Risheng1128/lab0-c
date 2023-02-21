@@ -49,16 +49,13 @@ bool q_insert_head(struct list_head *head, char *s)
     if (!element)
         return false;
 
-    unsigned int len = strlen(s);
-    element->value = malloc((len + 1) * sizeof(char));
+    // copy string
+    element->value = strdup(s);
     if (!element->value) {
         free(element);
         return false;
     }
 
-    // copy string into element
-    strncpy(element->value, s, len);
-    element->value[len] = 0;
     // initialize the node
     INIT_LIST_HEAD(&element->list);
     // add node into doubly-linked list at head
@@ -76,16 +73,13 @@ bool q_insert_tail(struct list_head *head, char *s)
     if (!element)
         return false;
 
-    unsigned int len = strlen(s);
-    element->value = malloc((len + 1) * sizeof(char));
+    // copy string
+    element->value = strdup(s);
     if (!element->value) {
         free(element);
         return false;
     }
 
-    // copy string into element
-    strncpy(element->value, s, len);
-    element->value[len] = 0;
     // initialize the node
     INIT_LIST_HEAD(&element->list);
     // add node into doubly-linked list at tail
