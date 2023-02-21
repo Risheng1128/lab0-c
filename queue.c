@@ -199,7 +199,7 @@ void q_swap(struct list_head *head)
     struct list_head *first = head->next;
 
     for (struct list_head *second = first->next;
-         first != head && first->next != head;
+         first != head && second != head;
          first = first->next, second = first->next) {
         // can swap
         list_del_init(first);
