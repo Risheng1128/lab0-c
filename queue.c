@@ -223,21 +223,6 @@ void q_reverse(struct list_head *head)
     }
 }
 
-/* Reverse the singly linked list */
-struct list_head *reverse_list(struct list_head *head)
-{
-    struct list_head *prev = NULL, *curr = head, *next = head;
-
-    while (next) {
-        next = curr->next;
-        curr->next = prev;
-        prev = curr;
-        curr = next;
-    }
-
-    return prev;
-}
-
 /* Connect the previous point to restructure list */
 void restructure_list(struct list_head *head)
 {
@@ -269,23 +254,17 @@ void q_reverseK(struct list_head *head, int k)
          sub_tail = sub_tail->next) {
         if (++count == k) {
             next_head = sub_tail->next;
-            // cut the linked list to be singly-linked list
-            sub_tail->next = NULL;
-            /* since the next step is reverse list, move the tail pointer to
-             * head pointer */
-            sub_tail = sub_head;
-            // reverse list
-            sub_head = reverse_list(sub_head);
-            // previous node connects to list
-            old_tail->next = sub_head;
-            // list connects next node
-            sub_tail->next = next_head;
-            old_tail = sub_tail;
+            sub_tail->next = old_tail;
+            q_reverse(old_tail);
+            // old node connects to the head of new list
+            old_tail->next = sub_tail;
+            // the new list connect to the next node
+            sub_head->next = next_head;
+            old_tail = sub_tail = sub_head;
             sub_head = next_head;
             count = 0;
         }
     }
-
     /* restructure the doubly-linked list */
     restructure_list(head);
 }
