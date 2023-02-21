@@ -94,11 +94,12 @@ element_t *q_remove_head(struct list_head *head, char *sp, size_t bufsize)
         return NULL;
 
     struct list_head *node = head->next;
-    list_del(node);
-
     element_t *element = list_entry(node, element_t, list);
+
+    list_del(node);
     if (sp) {
         strncpy(sp, element->value, bufsize - 1);
+        // add null terminator
         sp[bufsize - 1] = 0;
     }
 
@@ -112,11 +113,12 @@ element_t *q_remove_tail(struct list_head *head, char *sp, size_t bufsize)
         return NULL;
 
     struct list_head *node = head->prev;
-    list_del(node);
-
     element_t *element = list_entry(node, element_t, list);
+
+    list_del(node);
     if (sp) {
         strncpy(sp, element->value, bufsize - 1);
+        // add null terminator
         sp[bufsize - 1] = 0;
     }
 
@@ -145,16 +147,15 @@ bool q_delete_mid(struct list_head *head)
         return false;
 
     struct list_head *afterward = head->next, *forward = head->prev;
-    while (afterward != forward && afterward->next != forward) {
-        afterward = afterward->next;
-        forward = forward->prev;
-    }
+    // move point to find the middle node
+    for (; afterward != forward && afterward->next != forward;
+         afterward = afterward->next, forward = forward->prev)
+        ;
 
     // remove the middle node in queue
     list_del(forward);
     // delete the node
-    element_t *element = list_entry(forward, element_t, list);
-    q_release_element(element);
+    q_release_element(list_entry(forward, element_t, list));
     return true;
 }
 
@@ -207,12 +208,12 @@ void q_swap(struct list_head *head)
 
     struct list_head *first = head->next;
 
-    while (first != head && first->next != head) {
+    for (struct list_head *second = first->next;
+         first != head && first->next != head;
+         first = first->next, second = first->next) {
         // can swap
-        struct list_head *second = first->next;
         list_del_init(first);
         list_add(first, second);
-        first = first->next;
     }
 }
 
@@ -247,6 +248,19 @@ struct list_head *reverse_list(struct list_head *head)
     return prev;
 }
 
+/* Connect the previous point to restructure list */
+void restructure_list(struct list_head *head)
+{
+    struct list_head *curr = head, *next = curr->next;
+    while (next) {
+        next->prev = curr;
+        curr = next;
+        next = next->next;
+    }
+    curr->next = head;
+    head->prev = curr;
+}
+
 /* Reverse the nodes of the list k at a time */
 void q_reverseK(struct list_head *head, int k)
 {
@@ -258,16 +272,23 @@ void q_reverseK(struct list_head *head, int k)
     struct list_head *sub_head = head->next, *next_head = NULL,
                      *old_tail = head;
 
+    // cut the linked list to be singly-linked list
     head->prev->next = NULL;
 
     for (struct list_head *sub_tail = head->next; sub_tail;
          sub_tail = sub_tail->next) {
         if (++count == k) {
             next_head = sub_tail->next;
+            // cut the linked list to be singly-linked list
             sub_tail->next = NULL;
+            /* since the next step is reverse list, move the tail pointer to
+             * head pointer */
             sub_tail = sub_head;
+            // reverse list
             sub_head = reverse_list(sub_head);
+            // previous node connects to list
             old_tail->next = sub_head;
+            // list connects next node
             sub_tail->next = next_head;
             old_tail = sub_tail;
             sub_head = next_head;
@@ -275,14 +296,8 @@ void q_reverseK(struct list_head *head, int k)
         }
     }
 
-    struct list_head *curr = head, *next = curr->next;
-    while (next) {
-        next->prev = curr;
-        curr = next;
-        next = next->next;
-    }
-    curr->next = head;
-    head->prev = curr;
+    /* restructure the doubly-linked list */
+    restructure_list(head);
 }
 
 /* Merge the two lists in a one sorted list. */
@@ -332,18 +347,12 @@ void q_sort(struct list_head *head, bool descend)
 {
     if (!head || list_empty(head))
         return;
+
+    // cut the linked list to be singly-linked list
     head->prev->next = NULL;
     head->next = mergesort(head->next);
-
-    struct list_head *curr = head, *next = head->next;
-
-    while (next) {
-        next->prev = curr;
-        curr = next;
-        next = next->next;
-    }
-    curr->next = head;
-    head->prev = curr;
+    /* restructure the doubly-linked list */
+    restructure_list(head);
 }
 
 /* Remove every node which has a node with a strictly less value anywhere to
@@ -362,6 +371,7 @@ int q_descend(struct list_head *head)
     if (!head || list_empty(head) || list_is_singular(head))
         return 0;
 
+    // reverse list
     q_reverse(head);
 
     struct list_head *curr = head->next, *next = curr->next;
@@ -380,6 +390,8 @@ int q_descend(struct list_head *head)
             next = next->next;
         }
     }
+
+    // reverse list
     q_reverse(head);
     return q_size(head);
 }
@@ -396,6 +408,7 @@ int q_merge(struct list_head *head, bool descend)
 
     queue_contex_t *head_entry = NULL;
     list_for_each_entry (head_entry, head, chain) {
+        // cut the linked list to be singly-linked list
         head_entry->q->prev->next = NULL;
         merge = mergelist(merge, head_entry->q->next);
         head_entry->q->next = head_entry->q;
@@ -404,15 +417,7 @@ int q_merge(struct list_head *head, bool descend)
     head_entry = list_entry(head->next, queue_contex_t, chain);
     head_entry->q->next = merge;
 
-    struct list_head *curr = head_entry->q, *next = curr->next;
-
-    while (next) {
-        next->prev = curr;
-        curr = next;
-        next = next->next;
-    }
-    curr->next = head_entry->q;
-    head_entry->q->prev = curr;
-
+    /* restructure the doubly-linked list */
+    restructure_list(head_entry->q);
     return q_size(head_entry->q);
 }
