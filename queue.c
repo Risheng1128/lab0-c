@@ -340,28 +340,19 @@ int q_descend(struct list_head *head)
     if (!head || list_empty(head) || list_is_singular(head))
         return 0;
 
-    // reverse list
-    q_reverse(head);
-
-    struct list_head *curr = head->next, *next = curr->next;
-    while (next != head) {
+    for (struct list_head *curr = head->prev, *next = curr->prev; next != head;
+         next = curr->prev) {
         element_t *curr_entry = list_entry(curr, element_t, list);
         element_t *next_entry = list_entry(next, element_t, list);
 
         // if current node is greater than next node
         if (strcmp(curr_entry->value, next_entry->value) > 0) {
-            curr->next = next->next;
-            next->next->prev = curr;
+            list_del(next);
             q_release_element(next_entry);
-            next = curr->next;
-        } else {
+        } else
             curr = next;
-            next = next->next;
-        }
     }
 
-    // reverse list
-    q_reverse(head);
     return q_size(head);
 }
 
