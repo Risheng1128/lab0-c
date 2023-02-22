@@ -198,7 +198,7 @@ void q_swap(struct list_head *head)
          first != head && second != head;
          first = first->next, second = first->next) {
         // can swap
-        list_del_init(first);
+        list_del(first);
         list_add(first, second);
     }
 }
