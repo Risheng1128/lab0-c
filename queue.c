@@ -56,8 +56,6 @@ bool q_insert_head(struct list_head *head, char *s)
         return false;
     }
 
-    // initialize the node
-    INIT_LIST_HEAD(&element->list);
     // add node into doubly-linked list at head
     list_add(&element->list, head);
     return true;
@@ -80,8 +78,6 @@ bool q_insert_tail(struct list_head *head, char *s)
         return false;
     }
 
-    // initialize the node
-    INIT_LIST_HEAD(&element->list);
     // add node into doubly-linked list at tail
     list_add_tail(&element->list, head);
     return true;
@@ -365,8 +361,8 @@ int q_merge(struct list_head *head, bool descend)
         return 0;
 
     struct list_head *merge = NULL;
-
     queue_contex_t *head_entry = NULL;
+
     list_for_each_entry (head_entry, head, chain) {
         // cut the linked list to be singly-linked list
         head_entry->q->prev->next = NULL;
