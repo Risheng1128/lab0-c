@@ -42,6 +42,12 @@ OBJS := qtest.o report.o console.o harness.o queue.o \
         shannon_entropy.o \
         linenoise.o web.o
 
+ENABLE_LINUX_SORT ?= 1
+ifeq ($(ENABLE_LINUX_SORT), 1)
+CFLAGS += -D FEATURE_LINUX_SORT=1
+OBJS += list_sort.o
+endif
+
 deps := $(OBJS:%.o=.%.o.d)
 
 qtest: $(OBJS)

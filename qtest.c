@@ -23,6 +23,10 @@
 #include "list.h"
 #include "random.h"
 
+#if FEATURE_LINUX_SORT
+#include "list_sort.h"
+#endif
+
 /* Shannon entropy */
 extern double shannon_entropy(const uint8_t *input_data);
 extern int show_entropy;
@@ -600,7 +604,11 @@ bool do_sort(int argc, char *argv[])
 
     set_noallocate_mode(true);
     if (current && exception_setup(true))
+#if FEATURE_LINUX_SORT
+        list_sort(NULL, current->q, list_cmp);
+#else
         q_sort(current->q, descend);
+#endif
     exception_cancel();
     set_noallocate_mode(false);
 
