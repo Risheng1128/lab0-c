@@ -4,6 +4,7 @@
 
 #include <arpa/inet.h> /* inet_ntoa */
 #include <errno.h>
+#include <fcntl.h>
 #include <netinet/tcp.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -56,7 +57,10 @@ static ssize_t rio_read(rio_t *rp, char *usrbuf, size_t n)
     while (rp->count <= 0) { /* refill if buf is empty */
         rp->count = read(rp->fd, rp->buf, sizeof(rp->buf));
         if (rp->count < 0) {
-            if (errno != EINTR) /* interrupted by sig handler return */
+            // no data available yet
+            if (errno == EWOULDBLOCK || errno == EAGAIN)
+                rp->count = 0;       /* and call read() again */
+            else if (errno != EINTR) /* interrupted by sig handler return */
                 return -1;
         } else if (rp->count == 0) { /* EOF */
             return 0;
@@ -127,8 +131,12 @@ int web_open(int port)
     struct sockaddr_in serveraddr;
 
     /* Create a socket descriptor */
-    if ((listenfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    if ((listenfd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)) < 0)
         return -1;
+
+    /* set socket non-blocking */
+    int flags = fcntl(listenfd, F_GETFL);
+    fcntl(listenfd, F_SETFL, flags | O_NONBLOCK);
 
     /* Eliminates "Address already in use" error from bind. */
     if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, (const void *) &optval,
